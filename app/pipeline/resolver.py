@@ -15,6 +15,7 @@ import httpx
 
 from app.core.config import settings
 
+_TAVILY_URL = "https://api.tavily.com/search"
 _BRAVE_URL = "https://api.search.brave.com/res/v1/web/search"
 
 # The regular /html/ endpoint now shows a "select all squares with a duck"
@@ -65,16 +66,50 @@ async def search_snippets(name: str, location_hint: str | None = None, max_resul
 async def _search(query: str, max_results: int) -> list[dict]:
     """Return [{url, title, snippet}, ...] from whichever backend is available.
 
-    Prefers Brave's API (stable, free tier); falls back to scraping
-    DuckDuckGo's lite endpoint when no Brave key is configured or the API
-    call fails.
+    Tries Tavily first, then Brave, then falls back to scraping DuckDuckGo's
+    lite endpoint if no API key is configured or the call fails.
     """
+    if settings.tavily_api_key:
+        results = await _search_tavily(query, max_results)
+        if results:
+            return results
+
     if settings.brave_api_key:
         results = await _search_brave(query, max_results)
         if results:
             return results
 
     return await _search_duckduckgo(query, max_results)
+
+
+async def _search_tavily(query: str, max_results: int) -> list[dict]:
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            resp = await client.post(
+                _TAVILY_URL,
+                json={
+                    "api_key": settings.tavily_api_key,
+                    "query": query,
+                    "max_results": max_results,
+                },
+                headers={"Content-Type": "application/json"},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+    except (httpx.HTTPError, ValueError):
+        return []
+
+    results: list[dict] = []
+    for item in data.get("results", [])[:max_results]:
+        url = item.get("url")
+        if not url:
+            continue
+        results.append({
+            "url": url,
+            "title": _clean(item.get("title", "")),
+            "snippet": _clean(item.get("content", "")),
+        })
+    return results
 
 
 async def _search_brave(query: str, max_results: int) -> list[dict]:

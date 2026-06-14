@@ -30,9 +30,11 @@ class Settings:
     max_concurrent_leads: int = int(os.getenv("MAX_CONCURRENT_LEADS", "4"))
 
     # Search backend for name->URL resolution and the snippet fallback.
-    # Brave's API is used when a key is present (it's reliable and has a free
-    # tier); otherwise we scrape DuckDuckGo, which works but gets rate-limited
-    # and bot-challenged, especially from datacenter IPs like Render's.
+    # Tavily/Brave are used when a key is present (both are reliable and have
+    # free tiers); otherwise we scrape DuckDuckGo, which works but gets
+    # rate-limited and bot-challenged, especially from datacenter IPs like
+    # Render's. Tavily is checked first since it's the recommended default.
+    tavily_api_key: str = os.getenv("TAVILY_API_KEY", "")
     brave_api_key: str = os.getenv("BRAVE_API_KEY", "")
 
     # Comma-separated list of frontend origins allowed to call this API,
