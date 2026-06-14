@@ -29,6 +29,12 @@ class Settings:
     request_timeout: float = float(os.getenv("REQUEST_TIMEOUT", "10"))
     max_concurrent_leads: int = int(os.getenv("MAX_CONCURRENT_LEADS", "4"))
 
+    # Search backend for name->URL resolution and the snippet fallback.
+    # Brave's API is used when a key is present (it's reliable and has a free
+    # tier); otherwise we scrape DuckDuckGo, which works but gets rate-limited
+    # and bot-challenged, especially from datacenter IPs like Render's.
+    brave_api_key: str = os.getenv("BRAVE_API_KEY", "")
+
     # Comma-separated list of frontend origins allowed to call this API,
     # e.g. "http://localhost:3000,http://localhost:3001".
     cors_origins: list[str] = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
