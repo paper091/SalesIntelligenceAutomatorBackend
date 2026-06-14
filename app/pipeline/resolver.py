@@ -9,7 +9,10 @@ import re
 
 import httpx
 
-_SEARCH_URL = "https://duckduckgo.com/html/"
+# The regular /html/ endpoint now shows a "select all squares with a duck"
+# bot challenge to non-browser requests. The lite endpoint still returns
+# plain result links without one.
+_SEARCH_URL = "https://lite.duckduckgo.com/lite/"
 
 _DIRECTORY_HOSTS = {
     "facebook.com", "yelp.com", "linkedin.com", "instagram.com", "twitter.com",
@@ -18,7 +21,9 @@ _DIRECTORY_HOSTS = {
     "maps.google.com", "wikipedia.org",
 }
 
-_RESULT_LINK_RE = re.compile(r'href="(https?://[^"]+)"')
+# Lite's result links are scheme-relative (e.g. //duckduckgo.com/l/?uddg=...),
+# so match any href and let _unwrap_redirect sort out what's a real result.
+_RESULT_LINK_RE = re.compile(r'href="([^"]+)"')
 
 
 async def resolve(name: str, location_hint: str | None = None) -> str | None:
@@ -33,7 +38,14 @@ async def resolve(name: str, location_hint: str | None = None) -> str | None:
             resp = await client.get(
                 _SEARCH_URL,
                 params={"q": query},
-                headers={"User-Agent": "Mozilla/5.0 (compatible; SalesIntelBot/1.0)"},
+                headers={
+                    # A real browser UA matters here - DuckDuckGo's anti-bot
+                    # checks are picky about this even on the lite endpoint.
+                    "User-Agent": (
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                        "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"
+                    ),
+                },
             )
             resp.raise_for_status()
     except httpx.HTTPError:
@@ -41,6 +53,8 @@ async def resolve(name: str, location_hint: str | None = None) -> str | None:
 
     for raw_url in _RESULT_LINK_RE.findall(resp.text):
         candidate = _unwrap_redirect(raw_url)
+        if candidate is None:
+            continue
         host = _hostname(candidate)
         if not host or _is_directory(host):
             continue
@@ -49,16 +63,20 @@ async def resolve(name: str, location_hint: str | None = None) -> str | None:
     return None
 
 
-def _unwrap_redirect(url: str) -> str:
-    """DuckDuckGo wraps results in /l/?uddg=<encoded url>; unwrap if present."""
-    if "uddg=" in url:
-        from urllib.parse import parse_qs, unquote, urlparse
+def _unwrap_redirect(url: str) -> str | None:
+    """Pull the real target out of DuckDuckGo's /l/?uddg=<encoded url> wrapper.
 
-        qs = parse_qs(urlparse(url).query)
-        target = qs.get("uddg")
-        if target:
-            return unquote(target[0])
-    return url
+    Returns None for anything that isn't one of these wrapped result links
+    (nav links, asset links, etc).
+    """
+    if "uddg=" not in url:
+        return None
+
+    from urllib.parse import parse_qs, unquote, urlparse
+
+    qs = parse_qs(urlparse(url).query)
+    target = qs.get("uddg")
+    return unquote(target[0]) if target else None
 
 
 def _hostname(url: str) -> str | None:
