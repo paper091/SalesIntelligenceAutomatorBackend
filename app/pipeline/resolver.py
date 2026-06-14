@@ -1,7 +1,11 @@
 """Stage 2: resolve a company name (+ optional location) to a homepage URL.
 
-Behind a single `resolve()` interface so a richer search provider (e.g. Exa)
-can be swapped in later without touching the orchestrator.
+Also exposes `search_snippets()`, which the orchestrator falls back to when
+no website can be found or crawled - search-result titles/snippets are enough
+for the LLM to produce a (lower-confidence) brief instead of just failing.
+
+Behind these two functions so a richer search provider (e.g. Exa) can be
+swapped in later without touching the orchestrator.
 """
 from __future__ import annotations
 
@@ -21,9 +25,11 @@ _DIRECTORY_HOSTS = {
     "maps.google.com", "wikipedia.org",
 }
 
-# Lite's result links are scheme-relative (e.g. //duckduckgo.com/l/?uddg=...),
-# so match any href and let _unwrap_redirect sort out what's a real result.
-_RESULT_LINK_RE = re.compile(r'href="([^"]+)"')
+# Lite's results are simple HTML tables: a result-link <a>, optionally
+# followed by a result-snippet <td> before the next result-link.
+_LINK_RE = re.compile(r"<a rel=\"nofollow\" href=\"([^\"]+)\" class='result-link'>(.*?)</a>", re.DOTALL)
+_SNIPPET_RE = re.compile(r"<td class='result-snippet'>(.*?)</td>", re.DOTALL)
+_TAG_RE = re.compile(r"<[^>]+>")
 
 
 async def resolve(name: str, location_hint: str | None = None) -> str | None:
@@ -32,7 +38,27 @@ async def resolve(name: str, location_hint: str | None = None) -> str | None:
     Returns None if no confident, non-directory result is found. Never raises.
     """
     query = f"{name} {location_hint or ''} official site".strip()
+    results = await _search(query, max_results=10)
 
+    for result in results:
+        host = _hostname(result["url"])
+        if host and not _is_directory(host):
+            return result["url"]
+
+    return None
+
+
+async def search_snippets(name: str, location_hint: str | None = None, max_results: int = 5) -> list[dict]:
+    """Plain web search for a company, returning [{url, title, snippet}, ...].
+
+    Used as a last resort when there's no usable website to crawl - the
+    snippets alone often carry enough signal for a rough brief.
+    """
+    query = f"{name} {location_hint or ''}".strip()
+    return await _search(query, max_results=max_results)
+
+
+async def _search(query: str, max_results: int) -> list[dict]:
     try:
         async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
             resp = await client.get(
@@ -49,18 +75,36 @@ async def resolve(name: str, location_hint: str | None = None) -> str | None:
             )
             resp.raise_for_status()
     except httpx.HTTPError:
-        return None
+        return []
 
-    for raw_url in _RESULT_LINK_RE.findall(resp.text):
-        candidate = _unwrap_redirect(raw_url)
-        if candidate is None:
-            continue
-        host = _hostname(candidate)
-        if not host or _is_directory(host):
-            continue
-        return candidate
+    html = resp.text
+    links = list(_LINK_RE.finditer(html))
+    snippets = list(_SNIPPET_RE.finditer(html))
 
-    return None
+    results: list[dict] = []
+    for i, link in enumerate(links):
+        url = _unwrap_redirect(link.group(1))
+        if url is None:
+            continue
+
+        # The snippet for this result sits between this link and the next one.
+        window_end = links[i + 1].start() if i + 1 < len(links) else len(html)
+        snippet = ""
+        for s in snippets:
+            if link.end() <= s.start() < window_end:
+                snippet = _clean(s.group(1))
+                break
+
+        results.append({"url": url, "title": _clean(link.group(2)), "snippet": snippet})
+        if len(results) >= max_results:
+            break
+
+    return results
+
+
+def _clean(html: str) -> str:
+    """Strip tags and collapse whitespace from a snippet/title fragment."""
+    return re.sub(r"\s+", " ", _TAG_RE.sub("", html)).strip()
 
 
 def _unwrap_redirect(url: str) -> str | None:
