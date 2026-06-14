@@ -88,6 +88,14 @@ def _fetch_with_playwright_sync(urls: list[str]) -> dict[str, str]:
                 page = context.new_page()
                 try:
                     page.goto(url, timeout=settings.request_timeout * 1000, wait_until="domcontentloaded")
+                    # Many sites render their actual copy client-side after
+                    # the initial DOM load, so give the page a bit longer to
+                    # settle before grabbing its HTML. If it never goes idle
+                    # (e.g. polling/analytics), fall back to whatever loaded.
+                    try:
+                        page.wait_for_load_state("networkidle", timeout=settings.request_timeout * 1000)
+                    except Exception:
+                        pass
                     html = page.content()
                     results[url] = html[: settings.per_page_char_cap]
                 except Exception:

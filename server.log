@@ -136,4 +136,36 @@ INFO:     127.0.0.1:62733 - "GET /api/leads HTTP/1.1" 200 OK
 INFO:     127.0.0.1:62940 - "GET /api/leads HTTP/1.1" 200 OK
 INFO:     127.0.0.1:62940 - "GET /api/leads HTTP/1.1" 200 OK
 WARNING:  WatchFiles detected changes in 'app\core\config.py'. Reloading...
+ INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [13868]
+WARNING:  WatchFiles detected changes in 'app\pipeline\resolver.py'. Reloading...
+ Process SpawnProcess-6:
+Traceback (most recent call last):
+  File "C:\Python314\Lib\multiprocessing\process.py", line 320, in _bootstrap
+    self.run()
+    ~~~~~~~~^^
+  File "C:\Python314\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nitis\AppData\Roaming\Python\Python314\site-packages\uvicorn\_subprocess.py", line 73, in subprocess_started
+    sys.stdin = os.fdopen(stdin_fileno)  # pragma: full coverage
+                ~~~~~~~~~^^^^^^^^^^^^^^
+  File "<frozen os>", line 1076, in fdopen
+  File "<frozen codecs>", line 312, in __init__
+KeyboardInterrupt
+INFO:     Started server process [22360]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:63048 - "POST /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63048 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63048 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63048 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63048 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63048 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63048 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63048 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63048 - "GET /api/leads HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'app\pipeline\crawler.py'. Reloading...
  
