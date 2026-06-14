@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+pydantic
+httpx
+playwright
+trafilatura
+readability-lxml
+lxml
+openai
+openpyxl
+python-dotenv
+python-multipart
+pytest
+pytest-asyncio

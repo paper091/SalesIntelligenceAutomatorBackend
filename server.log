@@ -1,0 +1,57 @@
+INFO:     Will watch for changes in these directories: ['C:\\Users\\nitis\\Desktop\\projects\\SalesIntelligenceAutomator']
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [9804] using WatchFiles
+INFO:     Started server process [5112]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:58405 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58408 - "DELETE /api/leads HTTP/1.1" 204 No Content
+INFO:     127.0.0.1:58410 - "POST /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58428 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58467 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58467 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58483 - "DELETE /api/leads HTTP/1.1" 204 No Content
+INFO:     127.0.0.1:58469 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58470 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58470 - "POST /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58470 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58470 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58470 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58470 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58470 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58470 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58470 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58470 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58470 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58470 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58470 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58470 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49444 - "POST /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49444 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49444 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49444 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49444 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49444 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49444 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49444 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49444 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49444 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49444 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49444 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49444 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54053 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54053 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54065 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54065 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50539 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50539 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50541 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50542 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50572 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50572 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50574 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50575 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50592 - "GET /api/leads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50592 - "GET /api/leads HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'app\api\routes.py'. Reloading...
+ 
