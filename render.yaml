@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: sales-intelligence-automator
+    runtime: docker
+    plan: free
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: LLM_PROVIDER
+        value: groq
+      - key: GROQ_BASE_URL
+        value: https://api.groq.com/openai/v1
+      - key: ANALYSIS_MODEL
+        sync: false
+      - key: FILTER_MODEL
+        sync: false
+      - key: MAX_PAGES
+        value: "5"
+      - key: CHAR_BUDGET
+        value: "12000"
+      - key: PER_PAGE_CHAR_CAP
+        value: "6000"
+      - key: REQUEST_TIMEOUT
+        value: "20"
+      - key: MAX_CONCURRENT_LEADS
+        value: "3"
+      - key: CORS_ORIGINS
+        sync: false
