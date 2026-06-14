@@ -10,13 +10,14 @@ import os
 import threading
 
 from app.core.config import settings
+from app.llm.prompts import PROMPT_VERSION
 from app.models.schemas import SalesBrief
 
 _lock = threading.Lock()
 
 
 def cache_key(resolved_url: str, extracted_text: str) -> str:
-    payload = f"{resolved_url}|{extracted_text}".encode("utf-8")
+    payload = f"{PROMPT_VERSION}|{resolved_url}|{extracted_text}".encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
 
 

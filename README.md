@@ -205,12 +205,21 @@ lead never crashes the batch. When text is too thin to be useful, the analyzer s
 call entirely and returns a low-confidence `"Unknown"` brief instead of spending tokens
 guessing.
 
+**Stated assumption: how B2B is decided.** The assignment requires a B2B Yes/No decision
+but doesn't define an ICP, so we define and document our own rule rather than assume any
+lead is already a B2B prospect — every verdict is genuinely inferred from that company's own
+website. The bar (`B2B_RUBRIC` in `app/llm/prompts.py`, a one-line-editable constant) is "has
+a genuine, non-trivial offering aimed at business customers" (commercial, contractor,
+property-management, wholesale/trade, fleet, or institutional) — not "sells primarily to
+businesses". Many local service businesses (roofing, HVAC, plumbing, landscaping, tree care,
+movers, etc.) run a real commercial line alongside residential work, and that's enough to
+qualify even if consumer work is the larger half. Purely consumer-facing sites, sites with no
+real business-customer line, and parked/dead/directory sites are marked No, as is any case
+where the evidence is too thin to tell (default to No when unsure).
+
 **LLM reliability & token efficiency.** Output is constrained via Groq JSON mode plus a
 Pydantic schema (`SalesBrief`) — the required fields are always present and correctly typed.
-Temperature is `0.1` for repeatable results. The system prompt embeds a single, editable
-**B2B rubric** with an explicit decision procedure: qualified only if the company primarily
-sells to other businesses; local consumer home-services (roofing, lawn care, plumbing, etc.)
-are B2C unless the page shows a clear commercial/contractor/wholesale offering. The model must
+Temperature is `0.1` for repeatable results. The model must
 also return `b2b_signals` — the concrete phrases it based the decision on — so the call is
 auditable rather than a black-box yes/no. **Confidence is not self-reported by the model**
 (LLM self-grading is unreliable); it's computed in code from observable data quality — how
