@@ -21,7 +21,12 @@ class Settings:
 
     max_pages: int = int(os.getenv("MAX_PAGES", "4"))
     char_budget: int = int(os.getenv("CHAR_BUDGET", "7000"))
-    per_page_char_cap: int = int(os.getenv("PER_PAGE_CHAR_CAP", "40000"))
+    # Bounds raw HTML kept per page. Must be large: modern rendered pages put
+    # the real body content tens of thousands of chars in, after the <head>
+    # and inline scripts. char_budget (above) is what actually limits how much
+    # text reaches the LLM, so this just needs to be big enough to not truncate
+    # the body. Raw HTML is transient (never persisted), so a high cap is cheap.
+    per_page_char_cap: int = int(os.getenv("PER_PAGE_CHAR_CAP", "200000"))
 
     db_path: str = os.getenv("DB_PATH", os.path.join("data", "sales_intel.db"))
     cache_path: str = os.getenv("CACHE_PATH", os.path.join("data", "cache.json"))

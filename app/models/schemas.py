@@ -29,8 +29,13 @@ class SalesBrief(BaseModel):
     target_customer: str
     b2b_qualified: bool
     b2b_reasoning: str
+    # Concrete phrases/evidence from the page that drove the B2B decision, so
+    # the call is auditable instead of a black-box yes/no.
+    b2b_signals: list[str] = Field(default_factory=list)
     sales_questions: list[str] = Field(min_length=3, max_length=3)
-    confidence: Literal["low", "medium", "high"]
+    # Computed by the analyzer from data-quality signals, not asked of the LLM,
+    # so it defaults here and is overwritten after analysis.
+    confidence: Literal["low", "medium", "high"] = "low"
     evidence_note: str | None = None
 
 

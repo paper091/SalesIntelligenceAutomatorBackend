@@ -44,8 +44,38 @@ async def test_analyze_returns_valid_brief():
 
     brief = await analyze(llm, "Acme Roofing", extracted)
 
-    assert brief.model_dump() == VALID_BRIEF
+    # The LLM's extracted fields pass through unchanged.
+    assert brief.company_overview == VALID_BRIEF["company_overview"]
+    assert brief.b2b_qualified is False
+    assert brief.sales_questions == VALID_BRIEF["sales_questions"]
     assert llm.calls == 1
+
+
+@pytest.mark.asyncio
+async def test_analyze_overrides_model_confidence_with_computed_value():
+    # Model claims "high", but the source is one short page with no B2B
+    # signals, so the computed confidence should drop to "low".
+    llm = StubLLMClient([VALID_BRIEF])
+    extracted = ExtractedContent(text="Short.", source_pages=["https://acme.com/"])
+
+    brief = await analyze(llm, "Acme Roofing", extracted)
+
+    assert brief.confidence == "low"
+    assert brief.evidence_note and "Confidence low" in brief.evidence_note
+
+
+@pytest.mark.asyncio
+async def test_analyze_high_confidence_for_rich_corroborated_source():
+    rich = dict(VALID_BRIEF, b2b_signals=["mentions 'commercial roofing contracts'"])
+    llm = StubLLMClient([rich])
+    extracted = ExtractedContent(
+        text="x" * 2500,
+        source_pages=["https://acme.com/", "https://acme.com/about", "https://acme.com/services"],
+    )
+
+    brief = await analyze(llm, "Acme Roofing", extracted)
+
+    assert brief.confidence == "high"
 
 
 @pytest.mark.asyncio

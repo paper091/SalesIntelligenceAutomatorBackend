@@ -19,7 +19,7 @@ services:
       - key: CHAR_BUDGET
         value: "12000"
       - key: PER_PAGE_CHAR_CAP
-        value: "6000"
+        value: "200000"
       - key: REQUEST_TIMEOUT
         value: "20"
       - key: MAX_CONCURRENT_LEADS
