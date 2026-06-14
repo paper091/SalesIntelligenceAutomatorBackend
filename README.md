@@ -16,7 +16,8 @@ Given a list of leads (one per line — company names, "Name – City ST", or UR
 pipeline:
 
 1. **Intake** — normalizes each line (URL vs. company name), dedupes, strips location hints.
-2. **Resolve** — for name-only leads, searches the web to find a likely homepage URL.
+2. **Resolve** — for name-only leads, finds a likely homepage URL via a search API
+   (Tavily or Brave), falling back to a DuckDuckGo scrape if no key is set.
 3. **Crawl + Extract** — fetches the homepage plus a small allow-list of high-signal pages
    (`/about`, `/services`, `/products`, `/contact`), strips out navigation, cookie banners,
    footers, and boilerplate, and de-duplicates repeated blocks across pages.
@@ -25,9 +26,12 @@ pipeline:
    - Company Overview
    - Core Product or Service
    - Target Customer / Audience
-   - **B2B Qualification** (Yes/No + reasoning)
+   - **B2B Qualification** (Yes/No + reasoning + the concrete evidence signals behind it)
    - **Three tailored Sales Questions**
-   - Confidence level + evidence note
+   - Confidence level (computed from data quality, not self-reported) + evidence note
+
+If a lead has no findable website (or the site won't load), the pipeline falls back to
+building a lower-confidence brief from search-result snippets instead of failing outright.
 
 Each lead is processed independently and concurrently. A failing lead (unreachable site,
 unresolvable name, LLM error) is marked `failed` with a reason — it never crashes the batch.
@@ -45,10 +49,11 @@ SalesIntelligenceAutomator/
 │   ├── orchestrator.py        # runs the 4-stage pipeline per lead, with concurrency control
 │   ├── pipeline/
 │   │   ├── intake.py          # parse/normalize/dedupe raw lead text
-│   │   ├── resolver.py        # company name -> homepage URL via search
+│   │   ├── resolver.py        # name -> homepage URL + snippet search (Tavily/Brave/DuckDuckGo)
 │   │   ├── crawler.py         # httpx fast-path + Playwright fallback, crawl budget
 │   │   ├── extractor.py       # trafilatura clean-text extraction + de-dupe + truncation
-│   │   └── analyzer.py        # LLM call -> validated SalesBrief, retry on bad JSON
+│   │   ├── analyzer.py        # LLM call -> validated SalesBrief, computed confidence, retry
+│   │   └── export.py          # render lead results to an .xlsx workbook
 │   ├── llm/
 │   │   ├── client.py          # LLMClient interface + GroqClient implementation
 │   │   └── prompts.py         # system prompt, B2B rubric, JSON schema
@@ -61,6 +66,8 @@ SalesIntelligenceAutomator/
 ├── tests/                      # unit tests + golden-output test (mocked LLM)
 ├── data/                       # sqlite db, on-disk cache, sample_leads.txt
 ├── .devcontainer/              # GitHub Codespaces config
+├── Dockerfile                  # container image (Playwright base + app)
+├── render.yaml                 # one-click deploy config for Render
 ├── docker-compose.yml          # scaling-path stub (Postgres/Redis seams)
 ├── requirements.txt
 └── .env.example
@@ -97,6 +104,9 @@ copy .env.example .env
 `.env.example` is a blank template (no secrets, safe to commit). Edit your local `.env`
 (gitignored) and set at minimum:
 - `GROQ_API_KEY` — your Groq API key
+- `TAVILY_API_KEY` — free key from [tavily.com](https://tavily.com) for name→URL search
+  (strongly recommended; without it, name-only leads fall back to a DuckDuckGo scrape that
+  gets bot-blocked from datacenter IPs)
 - `CORS_ORIGINS` — the URL(s) the frontend runs on (e.g. `http://localhost:3000`)
 
 See [Configuration](#5-configuration) below for what every setting does and its default if
@@ -142,18 +152,24 @@ All settings are read from `.env` (see `.env.example` for the full list of keys,
 | Variable | Purpose | Default if blank |
 |---|---|---|
 | `GROQ_API_KEY` | Groq API key (required for analysis) | — |
+| `TAVILY_API_KEY` | Tavily search key for name→URL resolution (recommended) | — |
+| `BRAVE_API_KEY` | Brave search key (used if Tavily isn't set) | — |
 | `LLM_PROVIDER` | LLM backend | `groq` |
 | `GROQ_BASE_URL` | Groq's OpenAI-compatible endpoint | `https://api.groq.com/openai/v1` |
 | `ANALYSIS_MODEL` | Model for the final sales brief | `llama-3.3-70b-versatile` |
 | `FILTER_MODEL` | Reserved for cheap filtering/cleanup calls | `llama-3.1-8b-instant` |
 | `MAX_PAGES` | Max pages crawled per lead | `4` |
 | `CHAR_BUDGET` | Max characters of extracted text sent to the LLM | `7000` |
-| `PER_PAGE_CHAR_CAP` | Max HTML characters kept per fetched page | `40000` |
+| `PER_PAGE_CHAR_CAP` | Max HTML characters kept per fetched page | `200000` |
 | `REQUEST_TIMEOUT` | HTTP/crawl timeout (seconds) | `10` |
 | `MAX_CONCURRENT_LEADS` | Concurrent leads processed at once | `4` |
 | `DB_PATH` | SQLite database file | `data/sales_intel.db` |
 | `CACHE_PATH` | On-disk LLM-response cache file | `data/cache.json` |
 | `CORS_ORIGINS` | Comma-separated origins allowed to call the API | `http://localhost:3000` |
+
+> Search backend: name→URL resolution and the snippet fallback try **Tavily** first, then
+> **Brave**, then a **DuckDuckGo** scrape. The scrape works locally but is unreliable from
+> cloud IPs, so set `TAVILY_API_KEY` for any real/deployed use.
 
 > Groq model IDs change over time — verify `ANALYSIS_MODEL`/`FILTER_MODEL` against Groq's
 > live model list if analysis calls start failing with a "model not found" error.
@@ -176,22 +192,32 @@ config without touching pipeline code. Storage uses SQLite behind a `LeadReposit
 interface so Postgres/Supabase can drop in later without touching business logic.
 
 **Edge cases.** Leads arrive imperfect — bare company names with no URL, dead domains,
-JS-only pages, thin content. Name-only leads are resolved to a homepage via a plain search
-call (`resolver.py`), with directory/social sites (Facebook, Yelp, LinkedIn, etc.) filtered
-out of candidates. Unreachable sites raise a typed `CrawlError` and the lead is marked
-`failed` with a reason, never crashing the batch — each lead is processed in isolation under
-an `asyncio.Semaphore`. When extracted text is too thin to be useful, the analyzer skips the
-LLM call entirely and returns a low-confidence brief with `"Unknown"` fields and
-`b2b_qualified=false`, rather than spending tokens guessing.
+JS-only pages, thin content. Name-only leads are resolved to a homepage via a search API
+(`resolver.py`), with directory/social sites (Facebook, Yelp, LinkedIn, etc.) filtered out of
+candidates. JS-rendered pages defeat the static fetch, so the crawler escalates to Playwright
+and waits for network idle so client-rendered body text is captured (the raw-HTML cap is set
+high for the same reason — real content often sits tens of thousands of characters past the
+`<head>`). When no website can be found or the site won't load, rather than failing the lead
+the pipeline falls back to building a brief from search-result snippets, clearly marked as
+such. Truly unreachable leads with no snippets either raise a typed `CrawlError` or are marked
+`failed` with a reason — each lead runs in isolation under an `asyncio.Semaphore`, so one bad
+lead never crashes the batch. When text is too thin to be useful, the analyzer skips the LLM
+call entirely and returns a low-confidence `"Unknown"` brief instead of spending tokens
+guessing.
 
 **LLM reliability & token efficiency.** Output is constrained via Groq JSON mode plus a
-Pydantic schema (`SalesBrief`) — the five required fields are always present and correctly
-typed. Temperature is `0.1` for repeatable results. The system prompt embeds a single,
-editable **B2B rubric**: qualified only if the company primarily sells to other businesses;
-local consumer home-services (roofing, lawn care, plumbing, etc.) are B2C unless the page
-shows a clear commercial/contractor/wholesale offering. If the LLM's JSON fails schema
-validation, the pipeline re-prompts once with the validation error before marking the lead
-`failed`. Token use is kept low via the extraction step, a per-page HTML cap, a 4-page crawl
+Pydantic schema (`SalesBrief`) — the required fields are always present and correctly typed.
+Temperature is `0.1` for repeatable results. The system prompt embeds a single, editable
+**B2B rubric** with an explicit decision procedure: qualified only if the company primarily
+sells to other businesses; local consumer home-services (roofing, lawn care, plumbing, etc.)
+are B2C unless the page shows a clear commercial/contractor/wholesale offering. The model must
+also return `b2b_signals` — the concrete phrases it based the decision on — so the call is
+auditable rather than a black-box yes/no. **Confidence is not self-reported by the model**
+(LLM self-grading is unreliable); it's computed in code from observable data quality — how
+much text was extracted, how many pages corroborated it, whether the source was the real site
+or a search-snippet fallback, and how many fields came back `"Unknown"`. If the LLM's JSON
+fails schema validation, the pipeline re-prompts once with the validation error before marking
+the lead `failed`. Token use is kept low via the extraction step, a per-page HTML cap, a 4-page crawl
 budget, a 7k-character total budget with priority ordering (about/services first),
 cross-page de-duplication of repeated blocks, and an on-disk cache keyed on
 `sha256(resolved_url + extracted_text)` so re-running the same lead costs zero additional
@@ -201,6 +227,6 @@ tokens.
 (RQ/Celery) and swap SQLite for Postgres/Supabase for real concurrency — both seams are
 already abstracted (`LeadRepository`, `docker-compose.yml` stub). Add an evaluation harness
 that scores briefs against a labeled set to validate the B2B rubric and confidence
-calibration. Use a richer search provider (e.g. Exa) for name→URL resolution instead of a
-plain HTML search-results scrape. Add a CRM-integration point so a `done` brief can be POSTed
-to a lead record automatically.
+calibration. Deepen the crawl (e.g. follow more internal pages, parse structured data /
+schema.org markup) for richer briefs on thin sites. Add a CRM-integration point so a `done`
+brief can be POSTed to a lead record automatically.
