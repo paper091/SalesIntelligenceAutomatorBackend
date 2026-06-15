@@ -17,4 +17,4 @@ EXPOSE 8000
 
 # Render (and most free hosts) inject $PORT at runtime, so bind to that
 # instead of a hardcoded port.
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --no-access-log"]

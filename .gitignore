@@ -9,3 +9,5 @@ data/*.db
 data/cache.json
 
 .pytest_cache/
+
+*.log
