@@ -22,8 +22,12 @@ services:
         value: "200000"
       - key: REQUEST_TIMEOUT
         value: "20"
+      # Kept at 1 on the free 512MB plan: each lead that needs Playwright
+      # launches its own headless Chromium instance, and 2+ concurrent
+      # instances plus the app's own footprint can exceed 512MB and crash
+      # the instance with an OOM error.
       - key: MAX_CONCURRENT_LEADS
-        value: "3"
+        value: "1"
       - key: CORS_ORIGINS
         sync: false
       - key: TAVILY_API_KEY

@@ -71,7 +71,19 @@ def _fetch_with_playwright_sync(urls: list[str]) -> dict[str, str]:
     results: dict[str, str] = {}
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        # Keep Chromium's memory footprint down - important on small
+        # (e.g. 512MB) hosts where a couple of concurrent browser instances
+        # can otherwise exhaust available memory.
+        browser = p.chromium.launch(
+            headless=True,
+            args=[
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--no-sandbox",
+                "--disable-extensions",
+                "--js-flags=--max-old-space-size=128",
+            ],
+        )
         try:
             context = browser.new_context(user_agent=_HEADERS["User-Agent"])
 
