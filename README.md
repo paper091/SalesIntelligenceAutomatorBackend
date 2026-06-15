@@ -163,6 +163,7 @@ All settings are read from `.env` (see `.env.example` for the full list of keys,
 | `PER_PAGE_CHAR_CAP` | Max HTML characters kept per fetched page | `200000` |
 | `REQUEST_TIMEOUT` | HTTP/crawl timeout (seconds) | `10` |
 | `MAX_CONCURRENT_LEADS` | Concurrent leads processed at once | `4` |
+| `ENABLE_JS_RENDERING` | Allow the Playwright/Chromium fallback for JS-rendered pages | `true` |
 | `DB_PATH` | SQLite database file | `data/sales_intel.db` |
 | `CACHE_PATH` | On-disk LLM-response cache file | `data/cache.json` |
 | `CORS_ORIGINS` | Comma-separated origins allowed to call the API | `http://localhost:3000` |
@@ -170,6 +171,11 @@ All settings are read from `.env` (see `.env.example` for the full list of keys,
 > Search backend: name→URL resolution and the snippet fallback try **Tavily** first, then
 > **Brave**, then a **DuckDuckGo** scrape. The scrape works locally but is unreliable from
 > cloud IPs, so set `TAVILY_API_KEY` for any real/deployed use.
+
+> **Memory-constrained hosts (e.g. Render's 512MB free tier):** set `ENABLE_JS_RENDERING=false`
+> and `MAX_CONCURRENT_LEADS=1`. Even a single headless Chromium instance can exceed 512MB;
+> with rendering disabled, JS-heavy sites fall back to a search-snippet brief instead of
+> crashing the instance.
 
 > Groq model IDs change over time — verify `ANALYSIS_MODEL`/`FILTER_MODEL` against Groq's
 > live model list if analysis calls start failing with a "model not found" error.

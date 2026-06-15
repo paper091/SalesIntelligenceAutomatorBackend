@@ -22,12 +22,14 @@ services:
         value: "200000"
       - key: REQUEST_TIMEOUT
         value: "20"
-      # Kept at 1 on the free 512MB plan: each lead that needs Playwright
-      # launches its own headless Chromium instance, and 2+ concurrent
-      # instances plus the app's own footprint can exceed 512MB and crash
-      # the instance with an OOM error.
       - key: MAX_CONCURRENT_LEADS
         value: "1"
+      # Even a single headless Chromium launch (via Playwright) pushes this
+      # app's baseline memory over the 512MB free-tier limit and crashes the
+      # instance. Disable JS rendering on Render; sites that need it fall
+      # back to the existing search-snippet brief instead of crashing.
+      - key: ENABLE_JS_RENDERING
+        value: "false"
       - key: CORS_ORIGINS
         sync: false
       - key: TAVILY_API_KEY

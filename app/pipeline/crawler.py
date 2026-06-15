@@ -127,6 +127,8 @@ async def _fetch_with_playwright(urls: list[str]) -> dict[str, str]:
     support on Windows, which uvicorn's event loop may not be using. The sync
     API run on a separate thread avoids that dependency entirely.
     """
+    if not settings.enable_js_rendering:
+        return {}
     return await asyncio.to_thread(_fetch_with_playwright_sync, urls)
 
 

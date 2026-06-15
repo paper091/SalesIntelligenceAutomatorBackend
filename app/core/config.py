@@ -34,6 +34,13 @@ class Settings:
     request_timeout: float = float(os.getenv("REQUEST_TIMEOUT", "10"))
     max_concurrent_leads: int = int(os.getenv("MAX_CONCURRENT_LEADS", "4"))
 
+    # Headless Chromium (via Playwright) is the biggest single memory
+    # consumer in this app - on a 512MB host even one instance can push the
+    # process over the limit. When disabled, sites that need JS rendering
+    # simply yield fewer/no pages, and the pipeline's existing search-snippet
+    # fallback produces a (lower-confidence) brief instead of crashing.
+    enable_js_rendering: bool = os.getenv("ENABLE_JS_RENDERING", "true").lower() == "true"
+
     # Search backend for name->URL resolution and the snippet fallback.
     # Tavily/Brave are used when a key is present (both are reliable and have
     # free tiers); otherwise we scrape DuckDuckGo, which works but gets
